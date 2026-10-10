@@ -1,3 +1,28 @@
+# Ядро Lenovo A1000 — Linux 3.10.64, ветка **android-10** (Android 10)
+
+> **Ветки:** `main` — Android 8.1 · `android-4.4` — Android 4.4 · `android-9` — Android 9 (LOS 16) · `android-10` — Android 10 (LOS 17.1).
+> Это ОДНО ядро с разными конфигами, под свою версию Android берите свою ветку.
+
+## Как собрать
+
+```bash
+git clone -b android-10 https://github.com/Breead1337/lenovoa1000kernel3.10sourceENHANCED.git
+cd lenovoa1000kernel3.10sourceENHANCED
+git clone --depth 1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8 ../arm-eabi-4.8
+./build.sh
+```
+
+Результат — `out/Image` и модули `out/mali.ko`, `out/sprdwl.ko`, `out/trout_fm.ko`.
+Собирать ядро и модули нужно вместе: модули от другой сборки не загрузятся.
+Другая версия Android — другая ветка (`git checkout android-10 && ./build.sh`): конфиг пересоздаётся сам.
+Нужен Linux, `gcc`/`make`/`python3`/`bc`; тулчейн строго `arm-eabi-4.8`.
+
+## Особенности этой ветки
+
+Всё как в `android-9` плюс `CMDLINE_EXTEND` (загрузчик SC8830 выбрасывает свою cmdline, init ждёт `androidboot.hardware=sc8830`) и `PROC_DEVICETREE=y`. Нужны ambient capabilities и `memfd_create` (уже в ветке): без них не стартует init и ART.
+
+---
+
 # Ядро Lenovo A1000 — Linux 3.10.64, доработанное для Android 8.1 
 Для сборки только gcc 4.8
 ## Что изменено относительно базы 
