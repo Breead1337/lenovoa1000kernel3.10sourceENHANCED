@@ -2055,8 +2055,15 @@ static void cpuset_propagate_hotplug_workfn(struct work_struct *work)
 	cpumask_andnot(&off_cpus, cs->cpus_allowed, top_cpuset.cpus_allowed);
 	nodes_andnot(off_mems, cs->mems_allowed, top_cpuset.mems_allowed);
 
+	/*
+	 * A1000: маску не урезаем, пока в ней остаётся хотя бы одно живое
+	 * ядро — иначе после первого же гашения экрана top-app и foreground
+	 * навсегда остаются на cpu0. Подробности:
+	 * firmware/_los16_cpuset_hotplug.py
+	 */
 	/* remove offline cpus from @cs */
-	if (!cpumask_empty(&off_cpus)) {
+	if (!cpumask_empty(&off_cpus) &&
+	    !cpumask_intersects(cs->cpus_allowed, top_cpuset.cpus_allowed)) {
 		mutex_lock(&callback_mutex);
 		cpumask_andnot(cs->cpus_allowed, cs->cpus_allowed, &off_cpus);
 		mutex_unlock(&callback_mutex);

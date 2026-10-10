@@ -735,7 +735,10 @@ void sprdfb_panel_resume(struct sprdfb_device *dev, bool from_deep_sleep)
 		panel_init(dev);
 
 		//step3 reset panel
-		dev->panel->ops->panel_reset(dev->panel);//add by ontim
+		/* A1000: вендорный дубль сброса убран — panel_reset() ниже делает
+		 * тот же ops->panel_reset(), но сперва переводит линии в LP.
+		 * Сброс стоит 165 мс (reset_timing {5,40,120}), выход из сна был
+		 * на столько же длиннее. Подробности: firmware/_los16_panel_double_reset.py */
 		panel_reset(dev);
 
         printk("[kernel][%s %d]-------------\n",__func__,__LINE__);

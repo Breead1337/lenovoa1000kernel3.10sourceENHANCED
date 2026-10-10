@@ -42,6 +42,32 @@
 #include "sprdfb_chip_common.h"
 #include <ontim/ontim_dev_dgb.h>
 
+/* A1000: КОМУ ПРИНАДЛЕЖИТ ПИТАНИЕ ПАНЕЛИ.
+ *
+ * 0 (умолчание, Android 8.1) — питанием управляет ioctl SPRD_FB_SET_POWER_MODE.
+ *   На восьмёрке устаревшая цепочка late_resume не вызывается вовсе, поэтому
+ *   без этого панель после гашения не поднималась никогда: подсветка горит,
+ *   DISPC стоит — белый экран.
+ *
+ * 1 (Android 4.4) — питанием управляет ТОЛЬКО цепочка early_suspend/late_resume,
+ *   а ioctl лишь пишет в лог. На четвёрке цепочка живая и штатная, и два
+ *   механизма начинают драться: замерено 12 early_suspend против 24 resume за
+ *   одну загрузку, причём SurfaceFlinger шлёт SET_POWER_MODE(0) через 1 мс
+ *   после того, как late_resume поднял панель. Кто сходил последним, тот и
+ *   выиграл, а последним стабильно оказывался suspend -> dev->enable = 0 и
+ *   вечное "Invalid Device status 0" на каждый кадр.
+ *   Заодно чинится и подсветка: в цепочке early_suspend лампой заведует
+ *   sprd_backlight_earlysuspend, и она гаснет и зажигается ВМЕСТЕ с панелью,
+ *   тогда как смешанный режим оставлял лампу включённой над спящей панелью.
+ *
+ * Задаётся ТОЛЬКО через sysfs, из init.sc8830.rc четвёрки:
+ *   write /sys/module/sprdfb_main/parameters/legacy_pm 1
+ * Через командную строку ядра нельзя: загрузчик SC8830 её выбрасывает и
+ * собирает свою (проверено меткой, до /proc/cmdline она не доезжает).
+ */
+static int a1000_legacy_pm = 0;
+module_param_named(legacy_pm, a1000_legacy_pm, int, 0644);
+
 enum{
 	SPRD_IN_DATA_TYPE_ABGR888 = 0,
 	SPRD_IN_DATA_TYPE_BGR565,
@@ -649,6 +675,11 @@ static int sprdfb_ioctl(struct fb_info *info, unsigned int cmd,
 		 * deadlocks the SurfaceFlinger thread (frames stop -> black screen,
 		 * and resume never reaches dev->enable = 1, after which pan_display
 		 * keeps answering "Invalid Device status 0"). */
+		if (a1000_legacy_pm) {
+			/* A1000: за питание отвечает early_suspend/late_resume,
+			 * здесь только лог — см. описание legacy_pm в шапке файла. */
+			break;
+		}
 		if (0 == result) {
 			if ((0 == power_mode) || (3 == power_mode)) {
 				if (dev->enable) {

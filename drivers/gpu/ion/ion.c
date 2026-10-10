@@ -528,6 +528,11 @@ struct ion_handle *ion_alloc(struct ion_client *client, size_t len,
 		if (len == 480 * 800 * 4) {
 			heap_id_mask = (1u << 3);   /* ion_heap_carveout_overlay */
 			a1000_fallback = 1;
+		} else if (heap_id_mask == ~0u) {
+			/* generic "any heap" (Codec2, libion): carveouts are
+			 * mapped strongly-ordered -> unaligned SIGBUS */
+			heap_id_mask = (1u << 1);   /* ion_heap_system */
+			a1000_fallback = 1;
 		}
 a1000_retry:
 		down_read(&dev->lock);

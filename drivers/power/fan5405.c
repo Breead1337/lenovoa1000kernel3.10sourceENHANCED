@@ -361,8 +361,8 @@ static BYTE fan5405_GetValue(BYTE reg, BYTE reg_bit, BYTE reg_shift)
 ******************************************************************************/
 static void fan5405_Reset32sTimer(unsigned long data)
 {
-	printk("fan 5405 reset rimer\n");
-	printk("#####################################read error times is %d\n,writ error times is %d\n",read_err_count,write_error_count);
+	pr_debug("fan5405: reset 32s timer\n");
+	pr_debug("fan5405: i2c errors read=%d write=%d\n", read_err_count, write_error_count);
     fan5405_SetValue(FAN5405_REG_CONTROL0, FAN5405_TMR_RST_OTG,FAN5405_TMR_RST_OTG_SHIFT, RESET32S);
     mod_timer(&t32s_timer, jiffies + (T32S_RESET_INTERVAL * HZ));
 }
@@ -379,8 +379,8 @@ static void fan5405_Reset32sTimer(unsigned long data)
 
 void fan5405_Reset32sTimer_ap(void)
 {
-	printk("fan 5405 reset rimer for ap\n");
-	printk("#####################################read error times is %d\n,writ error times is %d\n",read_err_count,write_error_count);
+	pr_debug("fan5405: reset 32s timer (ap)\n");
+	pr_debug("fan5405: i2c errors read=%d write=%d\n", read_err_count, write_error_count);
     fan5405_SetValue(FAN5405_REG_CONTROL0, FAN5405_TMR_RST_OTG,FAN5405_TMR_RST_OTG_SHIFT, RESET32S);
     mod_timer(&t32s_timer, jiffies + (T32S_RESET_INTERVAL * HZ));
 }

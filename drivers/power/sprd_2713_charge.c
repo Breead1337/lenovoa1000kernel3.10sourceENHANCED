@@ -614,9 +614,9 @@ static uint32_t _sprdchg_read_chg_current(void)
 		//printk(KERN_ERR "sprdchg: sprdchg_read_chg_current:%d\n", temp);
 		return temp;
 	} else {
-		printk(KERN_ERR
-		       "chg_current warning....isense:%d....vbat:%d\n",
-		       isense, vbat);
+		/* A1000: не ошибка, а «тока нет» — сыпалось в лог постоянно.
+		 * Включить при разборе зарядки: dynamic_debug. */
+		pr_debug("chg_current: isense:%d vbat:%d\n", isense, vbat);
 		return 0;
 	}
 }

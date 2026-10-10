@@ -629,6 +629,13 @@ static int fib_check_nh(struct fib_config *cfg, struct fib_info *fi,
 				.daddr = nh->nh_gw,
 				.flowi4_scope = cfg->fc_scope + 1,
 				.flowi4_oif = nh->nh_oif,
+				/* A1000: правила маршрутизации Android заданы как
+				 * "from all iif lo oif <if> lookup <if>", и без
+				 * этого поля (ноль) не подходит ни одно из них:
+				 * лукап доходит до "32000: unreachable", и netd
+				 * не может добавить маршрут по умолчанию —
+				 * Wi-Fi без интернета. Так же сделано в 3.13+. */
+				.flowi4_iif = LOOPBACK_IFINDEX,
 			};
 
 			/* It is not necessary, but requires a bit of thinking */

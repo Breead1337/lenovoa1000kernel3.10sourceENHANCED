@@ -283,6 +283,10 @@ int cap_capset(struct cred *new,
 	new->cap_effective   = *effective;
 	new->cap_inheritable = *inheritable;
 	new->cap_permitted   = *permitted;
+	/* A1000: ambient обязан оставаться подмножеством pP ∩ pI. */
+	new->cap_ambient     = cap_intersect(old->cap_ambient,
+					     cap_intersect(*permitted,
+							   *inheritable));
 	return 0;
 }
 
@@ -564,6 +568,19 @@ skip:
 	else
 		cap_clear(new->cap_effective);
 	bprm->cap_effective = effective;
+
+	/* A1000: ambient переживает exec и добавляется к pP и pE. Если файл
+	 * сам даёт привилегии (file caps) или меняет uid/gid, ambient
+	 * сбрасываем — как в апстриме, иначе это дыра. */
+	if (has_cap || !uid_eq(new->euid, old->euid) ||
+	    !gid_eq(new->egid, old->egid)) {
+		cap_clear(new->cap_ambient);
+	} else {
+		new->cap_permitted = cap_combine(new->cap_permitted,
+						 new->cap_ambient);
+		new->cap_effective = cap_combine(new->cap_effective,
+						 new->cap_ambient);
+	}
 
 	/*
 	 * Audit candidate if current->cap_effective is set

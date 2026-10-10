@@ -43,6 +43,8 @@ static struct vfsmount *shm_mnt;
  */
 
 #include <linux/xattr.h>
+#include <linux/syscalls.h>
+#include <uapi/linux/memfd.h>
 #include <linux/exportfs.h>
 #include <linux/posix_acl.h>
 #include <linux/generic_acl.h>
@@ -3029,6 +3031,81 @@ put_memory:
 	return res;
 }
 EXPORT_SYMBOL_GPL(shmem_file_setup);
+
+/*
+ * A1000: memfd_create(2), бэкпорт из 3.17 (11f75a01448f). Нужен ART десятки:
+ * кеш JIT держится двумя отображениями одного безымянного файла tmpfs.
+ * Печати (F_SEAL_*) НЕ перенесены — см. _los17_kernel_memfd.py.
+ */
+#define MFD_NAME_PREFIX "memfd:"
+#define MFD_NAME_PREFIX_LEN (sizeof(MFD_NAME_PREFIX) - 1)
+#define MFD_NAME_MAX_LEN (NAME_MAX - MFD_NAME_PREFIX_LEN)
+
+#define MFD_ALL_FLAGS (MFD_CLOEXEC | MFD_ALLOW_SEALING)
+
+SYSCALL_DEFINE2(memfd_create,
+		const char __user *, uname,
+		unsigned int, flags)
+{
+	struct file *file;
+	int fd, error;
+	char *name;
+	long len;
+
+	if (flags & ~(unsigned int)MFD_ALL_FLAGS)
+		return -EINVAL;
+
+	/* Печатей в этом ядре нет. Молча делать вид, что запечатали, нельзя. */
+	if (flags & MFD_ALLOW_SEALING)
+		return -EINVAL;
+
+	/* длина считается вместе с завершающим нулём */
+	len = strnlen_user(uname, MFD_NAME_MAX_LEN + 1);
+	if (len <= 0)
+		return -EFAULT;
+	if (len > MFD_NAME_MAX_LEN + 1)
+		return -EINVAL;
+
+	name = kmalloc(len + MFD_NAME_PREFIX_LEN, GFP_KERNEL);
+	if (!name)
+		return -ENOMEM;
+
+	strcpy(name, MFD_NAME_PREFIX);
+	if (copy_from_user(&name[MFD_NAME_PREFIX_LEN], uname, len)) {
+		error = -EFAULT;
+		goto err_name;
+	}
+
+	/* завершающий ноль мог измениться после strnlen_user() */
+	if (name[len + MFD_NAME_PREFIX_LEN - 1]) {
+		error = -EFAULT;
+		goto err_name;
+	}
+
+	fd = get_unused_fd_flags((flags & MFD_CLOEXEC) ? O_CLOEXEC : 0);
+	if (fd < 0) {
+		error = fd;
+		goto err_name;
+	}
+
+	file = shmem_file_setup(name, 0, VM_NORESERVE);
+	if (IS_ERR(file)) {
+		error = PTR_ERR(file);
+		goto err_fd;
+	}
+	file->f_mode |= FMODE_LSEEK | FMODE_PREAD | FMODE_PWRITE;
+	file->f_flags |= O_RDWR | O_LARGEFILE;
+
+	fd_install(fd, file);
+	kfree(name);
+	return fd;
+
+err_fd:
+	put_unused_fd(fd);
+err_name:
+	kfree(name);
+	return error;
+}
 
 void shmem_set_file(struct vm_area_struct *vma, struct file *file)
 {

@@ -359,6 +359,10 @@ static int __init_trimming(struct regulator_dev *rdev)
 	if (to_vol && rdev->desc->ops->get_voltage) {
 		ctl_vol = rdev->desc->ops->get_voltage(rdev);
 		rdev->constraints->uV_offset = ctl_vol - to_vol;//uV
+		/* A1000: калибровка u-boot срезает vddarm на 34..44 мВ ниже
+		 * таблицы cpufreq -> зависания сразу после перехода на 1.2 ГГц */
+		if (!strcmp(desc->desc.name, "vddarm") && rdev->constraints->uV_offset < 0)
+			rdev->constraints->uV_offset = 0;
 		debug("regu 0x%p (%s), uV offset %d\n", regs, desc->desc.name, rdev->constraints->uV_offset);
 	}
 
@@ -413,7 +417,7 @@ static int __dcdc_enable_time(struct regulator_dev *rdev, int old_vol)
 	int vol = rdev->desc->ops->get_voltage(rdev);
 	if (vol > old_vol) {
 		/* FIXME: for dcdc, each step (50mV) takes 10us */
-		int dly = (vol - old_vol) * 10 / (50 * 1000);
+		int dly = (vol - old_vol) * 10 / (50 * 1000) * 2 + 30; /* A1000: запас */
 		WARN_ON(dly > 1000);
 		udelay(dly);
 	}

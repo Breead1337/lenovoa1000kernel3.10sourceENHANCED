@@ -2350,6 +2350,47 @@ SYSCALL_DEFINE5(prctl, int, option, unsigned long, arg2, unsigned long, arg3,
 	case PR_GET_TIMERSLACK:
 		error = current->timer_slack_ns;
 		break;
+	case PR_CAP_AMBIENT: {
+		/* A1000: бэкпорт из 4.3 (58319057b784). Поднять право в ambient
+		 * можно, только если оно уже есть и в permitted, и в inheritable. */
+		struct cred *new_cred;
+
+		if (arg2 == PR_CAP_AMBIENT_CLEAR_ALL) {
+			if (arg3 | arg4 | arg5)
+				return -EINVAL;
+			new_cred = prepare_creds();
+			if (!new_cred)
+				return -ENOMEM;
+			cap_clear(new_cred->cap_ambient);
+			return commit_creds(new_cred);
+		}
+
+		if (((!cap_valid(arg3)) | arg4 | arg5))
+			return -EINVAL;
+
+		if (arg2 == PR_CAP_AMBIENT_IS_SET) {
+			error = !!cap_raised(current_cred()->cap_ambient, arg3);
+			break;
+		}
+
+		if (arg2 != PR_CAP_AMBIENT_RAISE &&
+		    arg2 != PR_CAP_AMBIENT_LOWER)
+			return -EINVAL;
+
+		if (arg2 == PR_CAP_AMBIENT_RAISE &&
+		    (!cap_raised(current_cred()->cap_permitted, arg3) ||
+		     !cap_raised(current_cred()->cap_inheritable, arg3)))
+			return -EPERM;
+
+		new_cred = prepare_creds();
+		if (!new_cred)
+			return -ENOMEM;
+		if (arg2 == PR_CAP_AMBIENT_RAISE)
+			cap_raise(new_cred->cap_ambient, arg3);
+		else
+			cap_lower(new_cred->cap_ambient, arg3);
+		return commit_creds(new_cred);
+	}
 	case PR_SET_TIMERSLACK:
 		if (arg2 <= 0)
 			current->timer_slack_ns =

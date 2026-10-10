@@ -1962,6 +1962,14 @@ static int32_t sprdfb_dispc_pageflip(struct sprdfb_device *dev, uint32_t phys)
 		}
 	}
 
+	/* A1000: sprdfb_dispc_clean_lcd() на пробуждении гасит слой
+	 * (dispc_set_osd_alpha(0x00)) и рассчитывает, что его вернёт
+	 * sprdfb_dispc_refresh(). При нулевом копировании refresh не зовётся
+	 * вовсе, и экран после сна остаётся чёрным навсегда. Подтверждаем
+	 * видимость здесь — как и бит перестановки R/B выше. */
+	dispc_set_osd_alpha(0xff);
+	dispc_set_bits(BIT(0), DISPC_OSD_CTRL);
+
 	dispc_write(phys, DISPC_OSD_BASE_ADDR);
 	dev->frame_count += 1;
 
