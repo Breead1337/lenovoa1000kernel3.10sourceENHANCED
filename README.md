@@ -1,3 +1,28 @@
+# Ядро Lenovo A1000 — Linux 3.10.64, ветка **android-9** (Android 9)
+
+> **Ветки:** `main` — Android 8.1 · `android-4.4` — Android 4.4 · `android-9` — Android 9 (LOS 16) · `android-10` — Android 10 (LOS 17.1).
+> Это ОДНО ядро с разными конфигами, под свою версию Android берите свою ветку.
+
+## Как собрать
+
+```bash
+git clone -b android-9 https://github.com/Breead1337/lenovoa1000kernel3.10sourceENHANCED.git
+cd lenovoa1000kernel3.10sourceENHANCED
+git clone --depth 1 https://android.googlesource.com/platform/prebuilts/gcc/linux-x86/arm/arm-eabi-4.8 ../arm-eabi-4.8
+./build.sh
+```
+
+Результат — `out/Image` и модули `out/mali.ko`, `out/sprdwl.ko`, `out/trout_fm.ko`.
+Собирать ядро и модули нужно вместе: модули от другой сборки не загрузятся.
+Другая версия Android — другая ветка (`git checkout android-10 && ./build.sh`): конфиг пересоздаётся сам.
+Нужен Linux, `gcc`/`make`/`python3`/`bc`; тулчейн строго `arm-eabi-4.8`.
+
+## Особенности этой ветки
+
+Включены `CPUSETS`+`PROC_PID_CPUSET` (init.rc монтирует `/dev/cpuset`), `INET_UDP_DIAG`, `UID_CPUTIME`. Выключены `BUS_MONITOR_DEBUG` (его `BUG()` ронял аппарат) и симуляция приближения. `NETFILTER_XT_MATCH_OWNER` включать нельзя: выключит `xt_qtaguid`. Общие правки: ambient capabilities, `memfd_create`, ION «любая куча», fib iif lo.
+
+---
+
 # Ядро Lenovo A1000 — Linux 3.10.64, доработанное для Android 8.1 
 Для сборки только gcc 4.8
 ## Что изменено относительно базы 

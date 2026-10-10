@@ -105,3 +105,5 @@ sprd_nand_param.h
 *.otm-*
 *.fifoE00
 *.log
+out/
+Module.symvers
