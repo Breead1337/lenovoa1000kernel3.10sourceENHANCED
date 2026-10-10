@@ -888,18 +888,18 @@ static s32 _DrvFwCtrlParsePacket(u8 *pPacket, u16 nLength, TouchInfo_t *pInfo)
                 if (msg2xxx_info->pdata->prox_enable && ((pPacket[5] == 0x80) || 
                         (pPacket[5] == 0x40)) && (msg2xxx_info->ps_input_dev))
                 {
-                    if (pPacket[5] == 0x40) // close to
-                    {
-                        input_report_abs(msg2xxx_info->ps_input_dev, ABS_DISTANCE, 10);
-                        input_sync(msg2xxx_info->ps_input_dev);
-                        printk("[kernel][%s %d]***prox_enable pPacket[5] = 0x%x***\n",__func__,__LINE__,pPacket[5]);
-                    }
-                    else if (pPacket[5] == 0x80) // far away
-                    {
-                        input_report_abs(msg2xxx_info->ps_input_dev, ABS_DISTANCE, 0);
-                        input_sync(msg2xxx_info->ps_input_dev);
-                    }
-                    
+                    /*
+                     * a1000: эхо команды включения, а не рука.
+                     *
+                     * Замер с пустым столом: на каждый взвод ровно два 0x40 —
+                     * через ~5 мс и через ~1.9 с; 0x80 не приходит никогда, а
+                     * настоящее приближение не даёт вообще ни одного пакета.
+                     * Прошивка панели приближение не умеет (потому у вендора и
+                     * включена симуляция). Сообщать по этим пакетам «близко»
+                     * нельзя: система гасила бы экран в начале разговора и не
+                     * включала обратно. Пакет глотаем, чтобы 0x40 не уехал в
+                     * разбор клавиш, но в input ничего не отдаём.
+                     */
                     return -1;
                 }  
 

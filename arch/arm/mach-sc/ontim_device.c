@@ -616,6 +616,17 @@ static struct touchpanel_platform_data msg2133_ts_info = {
     //	.x_y_exchange   =false,
     //	.vdd_name = "v_ldo8",
     //	.ignore_product_name = true,
+    /*
+     * A1000: датчика приближения ОТДЕЛЬНОЙ микросхемой на плате нет — сканом
+     * всех четырёх шин i2c живыми найдены только mc3xxx(0x4c), fan5405(0x6a)
+     * и сам тачскрин(0x26/0x59), а ltr553 отвечает «Part ID Read Fail».
+     * При этом сток Android 5 объявляет android.hardware.sensor.proximity,
+     * то есть приближение здесь ёмкостное, от самой панели. Ровно для этого у
+     * варианта с focaltech стоит prox_enable=1; у mstar вендор его не выставил.
+     * С этим флагом драйвер регистрирует input-устройство "als_prox", которое
+     * и ищет вендорный sensors.sc8830.so (AlsProxSensor).
+     */
+    .prox_enable = 1,
 };
 #endif
 
